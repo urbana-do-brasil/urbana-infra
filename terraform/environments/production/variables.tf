@@ -9,7 +9,22 @@ variable "region" {
   default = "us-central1"
 }
 
-variable "replicas_api_gateway" {
-  type    = number
-  default = 3
+variable "cluster_name" {
+  type = string
+  description = "Nome do cluster GKE para production"
+}
+
+variable "node_count" {
+  type = number
+  description = "Número de nós no cluster production"
+}
+
+variable "machine_type" {
+  type = string
+  description = "Tipo de máquina dos nós do cluster staging (e.g., e2-medium)"
+}
+
+variable "kubernetes_version" {
+  type = string
+  description = "Versão do Kubernetes para o cluster production"
 }
