@@ -24,6 +24,4 @@ resource "google_container_cluster" "primary" {
   node_config {
     machine_type = var.machine_type
   }
-
-  min_master_version = var.kubernetes_version
 }

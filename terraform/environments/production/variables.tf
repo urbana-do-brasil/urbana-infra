@@ -26,9 +26,3 @@ variable "machine_type" {
   description = "Tipo de máquina dos nós do cluster production (e.g., e2-standard-4)"
   default = "e2-standard-4"
 }
-
-variable "kubernetes_version" {
-  type = string
-  description = "Versão do Kubernetes para o cluster production"
-  default = "1.27.1"
-}
