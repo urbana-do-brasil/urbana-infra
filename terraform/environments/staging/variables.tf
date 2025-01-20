@@ -31,9 +31,3 @@ variable "machine_type" {
   description = "Tipo de máquina dos nós do cluster staging (e.g., e2-medium)"
   default = "e2-medium"
 }
-
-variable "kubernetes_version" {
-  type = string
-  description = "Versão do Kubernetes para o cluster staging"
-  default = "1.27.1"
-}
