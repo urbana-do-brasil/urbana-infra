@@ -9,7 +9,20 @@ variable "region" {
   default = "us-central1"
 }
 
-variable "replicas_api_gateway" {
-  type    = number
+variable "cluster_name" {
+  type = string
+  description = "Nome do cluster GKE para production"
+  default = "urbana-chatbot-production-cluster"
+}
+
+variable "node_count" {
+  type = number
+  description = "Número de nós no cluster production"
   default = 3
+}
+
+variable "machine_type" {
+  type = string
+  description = "Tipo de máquina dos nós do cluster production (e.g., e2-standard-4)"
+  default = "e2-standard-4"
 }
