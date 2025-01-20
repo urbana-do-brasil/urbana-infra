@@ -8,3 +8,8 @@ variable "region" {
   description = "Região do projeto GCP (e.g., us-central1)"
   default = "us-central1"
 }
+
+variable "replicas_api_gateway" {
+  type    = number
+  default = 2
+}
