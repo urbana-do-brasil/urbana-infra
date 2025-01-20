@@ -7,7 +7,7 @@ terraform {
   }
   backend "gcs" {
     bucket = "urbana-chatbot-terraform-state"
-    prefix = "terraform/state"
+    prefix = "terraform/state/production"
   }
 }
 
@@ -16,6 +16,10 @@ provider "google" {
   region  = var.region
 }
 
-# Declarando as variáveis que serão usadas
 variable "project_id" {}
 variable "region" {}
+
+variable "replicas_api_gateway" {
+  type    = number
+  default = 3
+}
