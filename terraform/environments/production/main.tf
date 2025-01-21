@@ -25,3 +25,9 @@ resource "google_container_cluster" "primary" {
     machine_type = var.machine_type
   }
 }
+
+resource "google_artifact_registry_repository" "api_gateway" {
+  location = var.region
+  repository_id = "api-gateway"
+  format = "DOCKER"
+}
