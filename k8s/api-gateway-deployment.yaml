@@ -10,6 +10,11 @@ spec:
   selector:
     matchLabels:
       app: api-gateway
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -19,6 +24,7 @@ spec:
       containers:
       - name: api-gateway
         image: us-central1-docker.pkg.dev/extreme-mix-447320-i4/api-gateway/api-gateway:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
         resources:
@@ -28,7 +34,13 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
-        livenessProbe: # Verifica se o container está "vivo"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
           httpGet:
             path: /actuator/health
             port: 8080
