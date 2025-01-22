@@ -24,6 +24,8 @@ resource "google_container_cluster" "primary" {
   node_config {
     machine_type = var.machine_type
   }
+
+  deletion_protection = false
 }
 
 resource "google_artifact_registry_repository" "api_gateway" {
