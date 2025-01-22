@@ -1,6 +1,7 @@
 variable "project_id" {
   type = string
   description = "ID do projeto GCP"
+  default = "extreme-mix-447320-i4"
 }
 
 variable "region" {
@@ -9,25 +10,8 @@ variable "region" {
   default = "us-central1"
 }
 
-variable "replicas_api_gateway" {
-  type    = number
-  default = 2
-}
-
 variable "cluster_name" {
   type = string
   description = "Nome do cluster GKE para staging"
   default = "urbana-chatbot-staging-cluster"
-}
-
-variable "node_count" {
-  type = number
-  description = "Número de nós no cluster staging"
-  default = 1
-}
-
-variable "machine_type" {
-  type = string
-  description = "Tipo de máquina dos nós do cluster staging (e.g., e2-medium)"
-  default = "e2-medium"
 }

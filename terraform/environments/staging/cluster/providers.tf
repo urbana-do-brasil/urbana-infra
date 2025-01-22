@@ -1,10 +1,13 @@
 terraform {
+  required_version = "~> 1.9"
+  
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "6.12.0"
     }
   }
+
   backend "gcs" {
     bucket = "urbana-chatbot-terraform-state"
     prefix = "terraform/state/staging"
@@ -14,14 +17,4 @@ terraform {
 provider "google" {
   project = var.project_id
   region  = var.region
-}
-
-resource "google_container_cluster" "primary" {
-  name               = var.cluster_name
-  location           = var.region
-  initial_node_count = var.node_count
-
-  node_config {
-    machine_type = var.machine_type
-  }
 }
