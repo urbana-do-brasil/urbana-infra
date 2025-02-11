@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: api-gateway
-        image: us-central1-docker.pkg.dev/extreme-mix-447320-i4/api-gateway/api-gateway:latest
+        image: IMAGE_URL
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080

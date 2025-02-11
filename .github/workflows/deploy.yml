@@ -1,0 +1,31 @@
+name: Deploy to GKE
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Tag da imagem a ser implantada (ex: v1.0.0, latest, sha-do-commit)'
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configurar gcloud CLI
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Autenticar no cluster GKE
+        run: gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} --region ${{ secrets.GKE_CLUSTER_REGION }}
+
+      - name: Atualizar a imagem no Deployment
+        run: |
+          sed -i "s|IMAGE_URL|us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/api-gateway/api-gateway:${{ github.event.inputs.image_tag }}|g" k8s/api-gateway-deployment.yaml
+
+      - name: Aplicar os manifestos do Kubernetes
+        run: kubectl apply -f k8s/ -n whatsapp-chatbot
