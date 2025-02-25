@@ -20,4 +20,10 @@ resource "google_container_cluster" "gke" {
   subnetwork = google_compute_subnetwork.subnet.name
 
   deletion_protection = false
+
+  addons_config {
+    http_load_balancing {
+      disabled = false
+    }
+  }
 }
