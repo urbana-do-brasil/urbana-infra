@@ -16,11 +16,16 @@ on:
           - dev
           - staging
           - prod
+      gcp_region:
+        description: 'Região do GCP (ex: us-central1)'
+        required: false
+        default: 'us-central1'
+      gke_cluster_name:
+        description: 'Nome do cluster GKE'
+        required: false
 
 env:
-  GCP_REGION: ${{ secrets.GCP_REGION }}
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GKE_CLUSTER_NAME: ${{ secrets.GKE_CLUSTER_NAME }}
   NAMESPACE: whatsapp_chatbot
   ARTIFACT_REGISTRY_REPO: api-gateway
   IMAGE_NAME: api-gateway
@@ -47,8 +52,35 @@ jobs:
         with:
           install_components: 'gke-gcloud-auth-plugin'
 
+      - name: Definir variáveis de região e cluster
+        id: set_vars
+        run: |
+          # Definir a região do GCP
+          GCP_REGION="${{ github.event.inputs.gcp_region }}"
+          if [ -z "$GCP_REGION" ]; then
+            GCP_REGION="${{ secrets.GCP_REGION }}"
+            if [ -z "$GCP_REGION" ]; then
+              GCP_REGION="us-central1"  # Valor padrão
+            fi
+          fi
+          echo "GCP_REGION=$GCP_REGION" >> $GITHUB_ENV
+          echo "gcp_region=$GCP_REGION" >> $GITHUB_OUTPUT
+          
+          # Definir o nome do cluster GKE
+          GKE_CLUSTER_NAME="${{ github.event.inputs.gke_cluster_name }}"
+          if [ -z "$GKE_CLUSTER_NAME" ]; then
+            GKE_CLUSTER_NAME="${{ secrets.GKE_CLUSTER_NAME }}"
+            if [ -z "$GKE_CLUSTER_NAME" ]; then
+              echo "ERRO: Nome do cluster GKE não fornecido. Forneça via input ou secret GKE_CLUSTER_NAME."
+              exit 1
+            fi
+          fi
+          echo "GKE_CLUSTER_NAME=$GKE_CLUSTER_NAME" >> $GITHUB_ENV
+          echo "gke_cluster_name=$GKE_CLUSTER_NAME" >> $GITHUB_OUTPUT
+
       - name: Autenticar no cluster GKE
         run: |
+          echo "Conectando ao cluster ${{ env.GKE_CLUSTER_NAME }} na região ${{ env.GCP_REGION }}..."
           gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} --region ${{ env.GCP_REGION }}
           
       - name: Verificar se a imagem existe no Artifact Registry
