@@ -1,0 +1,101 @@
+name: Deploy da API Gateway para GKE
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Tag da imagem a ser implantada (ex: v1.0.0, latest, sha-do-commit)'
+        required: true
+        default: 'latest'
+      environment:
+        description: 'Ambiente para deploy (prod, staging, dev)'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER_NAME: ${{ secrets.GKE_CLUSTER_NAME }}
+  NAMESPACE: whatsapp_chatbot
+  ARTIFACT_REGISTRY_REPO: api-gateway
+  IMAGE_NAME: api-gateway
+
+jobs:
+  deploy:
+    name: Deploy para ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Google Cloud SDK
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configurar gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Autenticar no cluster GKE
+        run: |
+          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} --region ${{ env.GCP_REGION }}
+          
+      - name: Verificar se a imagem existe no Artifact Registry
+        id: check_image
+        run: |
+          IMAGE_PATH="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
+          
+          if gcloud artifacts docker images describe $IMAGE_PATH > /dev/null 2>&1; then
+            echo "A imagem $IMAGE_PATH existe no Artifact Registry."
+            echo "image_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "ERRO: A imagem $IMAGE_PATH não existe no Artifact Registry."
+            echo "image_exists=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Atualizar a imagem no manifesto de Deployment
+        if: steps.check_image.outputs.image_exists == 'true'
+        run: |
+          IMAGE_PATH="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
+          sed -i "s|IMAGE_URL|$IMAGE_PATH|g" k8s/api-gateway-deployment.yaml
+          
+          echo "Manifesto atualizado com a imagem: $IMAGE_PATH"
+          cat k8s/api-gateway-deployment.yaml | grep -A 3 "image:"
+
+      - name: Aplicar os manifestos do Kubernetes
+        run: |
+          echo "Aplicando manifestos Kubernetes no namespace ${{ env.NAMESPACE }}..."
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/api-gateway-deployment.yaml -n ${{ env.NAMESPACE }}
+          kubectl apply -f k8s/api-gateway-service.yaml -n ${{ env.NAMESPACE }}
+          kubectl apply -f k8s/network-policy.yaml -n ${{ env.NAMESPACE }}
+          
+      - name: Verificar status do rollout
+        run: |
+          echo "Verificando status do rollout..."
+          kubectl rollout status deployment/api-gateway -n ${{ env.NAMESPACE }} --timeout=180s
+          
+      - name: Exibir informações do deployment
+        if: success()
+        run: |
+          echo "Deployment concluído com sucesso!"
+          echo "Pods em execução:"
+          kubectl get pods -l app=api-gateway -n ${{ env.NAMESPACE }}
+          
+          echo "Serviço:"
+          kubectl get svc -l app=api-gateway -n ${{ env.NAMESPACE }}
+          
+          echo "Ingress:"
+          kubectl get ingress api-gateway-ingress -n ${{ env.NAMESPACE }} -o wide
