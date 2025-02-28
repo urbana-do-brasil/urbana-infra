@@ -40,12 +40,18 @@ resource "kubernetes_ingress_v1" "api_gateway_ingress" {
         namespace = "whatsapp_chatbot"
         annotations = {
             "kubernetes.io/ingress.class" = "gce"
-            "networking.gke.io/managed-certificates" = "api-gateway-certificate"
+            "cert-manager.io/cluster-issuer" = "letsencrypt-prod"
+            "kubernetes.io/tls-acme" = "true"
         }
     }
 
     spec {
+        tls {
+            hosts = [var.domain_name]
+            secret_name = "api-gateway-tls"
+        }
         rule {
+            host = var.domain_name
             http {
                 path {
                     path = "/"
@@ -69,18 +75,4 @@ resource "kubernetes_ingress_v1" "api_gateway_ingress" {
     }
 
     depends_on = [kubernetes_manifest.api_gateway_service]
-}
-
-resource "google_compute_managed_ssl_certificate" "api_gateway_certificate" {
-    name = "api-gateway-certificate"
-
-    managed {
-        domains = [kubernetes_ingress_v1.api_gateway_ingress.status.0.load_balancer.0.ingress.0.ip]
-    }
-
-    lifecycle {
-        create_before_destroy = true
-    }
-
-    depends_on = [kubernetes_ingress_v1.api_gateway_ingress]
 }
