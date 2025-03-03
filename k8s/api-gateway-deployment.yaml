@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api-gateway
-  namespace: whatsapp_chatbot
+  namespace: whatsapp-chatbot
   labels:
     app: api-gateway
 spec:

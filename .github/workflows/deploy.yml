@@ -26,7 +26,7 @@ on:
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  NAMESPACE: whatsapp_chatbot
+  NAMESPACE: whatsapp-chatbot
   ARTIFACT_REGISTRY_REPO: api-gateway
   IMAGE_NAME: api-gateway
 

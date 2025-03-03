@@ -278,23 +278,23 @@ EOF
 ### Verificar logs da aplicação
 
 ```bash
-kubectl logs -f -l app=api-gateway -n whatsapp_chatbot
+kubectl logs -f -l app=api-gateway -n whatsapp-chatbot
 ```
 
 ### Verificar status do certificado
 
 ```bash
-kubectl get certificate -n whatsapp_chatbot
+kubectl get certificate -n whatsapp-chatbot
 ```
 
 ### Verificar status do Ingress
 
 ```bash
-kubectl describe ingress api-gateway-ingress -n whatsapp_chatbot
+kubectl describe ingress api-gateway-ingress -n whatsapp-chatbot
 ```
 
 ### Verificar Network Policies
 
 ```bash
-kubectl describe networkpolicy api-gateway-network-policy -n whatsapp_chatbot
+kubectl describe networkpolicy api-gateway-network-policy -n whatsapp-chatbot
 ``` 

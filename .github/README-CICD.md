@@ -153,8 +153,8 @@ Para obter mais informações, execute:
 
 ```bash
 # Verificar logs dos pods
-kubectl logs -l app=api-gateway -n whatsapp_chatbot
+kubectl logs -l app=api-gateway -n whatsapp-chatbot
 
 # Verificar eventos do Kubernetes
-kubectl get events -n whatsapp_chatbot
+kubectl get events -n whatsapp-chatbot
 ``` 

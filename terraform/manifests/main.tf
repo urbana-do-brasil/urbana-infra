@@ -1,6 +1,6 @@
 resource "kubernetes_namespace" "whatsapp_chatbot" {
     metadata {
-        name = "whatsapp_chatbot"
+        name = "whatsapp-chatbot"
     }
 }
 
