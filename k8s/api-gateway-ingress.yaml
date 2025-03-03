@@ -5,14 +5,12 @@ metadata:
   namespace: whatsapp-chatbot
   annotations:
     kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.allow-http: "true"
+    # Configurações de health check
+    cloud.google.com/backend-config: '{"default": "api-gateway-backendconfig"}'
 spec:
-  rules:
-  - http:
-      paths:
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: api-gateway
-            port:
-              number: 80 
+  defaultBackend:
+    service:
+      name: api-gateway
+      port:
+        number: 80 

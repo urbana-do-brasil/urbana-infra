@@ -5,7 +5,10 @@ metadata:
   namespace: whatsapp-chatbot
   labels:
     app: api-gateway
+  annotations:
+    cloud.google.com/backend-config: '{"default": "api-gateway-backendconfig"}'
 spec:
+  type: ClusterIP
   selector:
     app: api-gateway
   ports:

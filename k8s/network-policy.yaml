@@ -11,13 +11,7 @@ spec:
   - Ingress
   - Egress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: kube-system
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: monitoring
+  - from: []  # Permite tráfego de entrada de qualquer origem
     ports:
     - protocol: TCP
       port: 8080
