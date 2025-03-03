@@ -68,7 +68,7 @@ on:
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  NAMESPACE: whatsapp_chatbot
+  NAMESPACE: whatsapp-chatbot
   ARTIFACT_REGISTRY_REPO: api-gateway
   IMAGE_NAME: api-gateway
 
@@ -139,7 +139,9 @@ Este workflow de deploy pode ser integrado com outros workflows, como:
 
 ## Solução de Problemas
 
-Se o workflow falhar, verifique:
+### Problemas Comuns de Deployment
+
+Se o workflow falhar, verifique os seguintes problemas comuns:
 
 1. **Imagem não encontrada**: Certifique-se de que a imagem com a tag especificada existe no Artifact Registry.
 
@@ -147,14 +149,94 @@ Se o workflow falhar, verifique:
 
 3. **Erros no Kubernetes**: Verifique os logs do workflow para identificar erros nos manifestos Kubernetes.
 
-4. **Variáveis de ambiente vazias**: Certifique-se de que as variáveis `GCP_REGION` e `GKE_CLUSTER_NAME` estão definidas corretamente, seja via inputs do workflow ou secrets do repositório.
+4. **Variáveis de ambiente vazias**: Certifique-se de que as variáveis `GCP_REGION` e `GKE_CLUSTER_NAME` estão definidas corretamente.
 
-Para obter mais informações, execute:
+5. **Timeout no rollout**: Se o deployment não completar dentro do tempo limite, pode haver problemas com:
+   - **Health checks**: Os probes de liveness, readiness ou startup podem estar falhando
+   - **Recursos insuficientes**: O cluster pode não ter CPU ou memória suficientes
+   - **Secrets ausentes**: Verifique se os secrets necessários existem no namespace
+   - **Problemas na aplicação**: A aplicação pode estar falhando ao inicializar
+
+### Diagnóstico Automático
+
+O workflow inclui uma etapa de diagnóstico automático que é executada quando o rollout falha. Esta etapa coleta informações detalhadas sobre o estado do deployment, incluindo:
+
+- Status dos pods
+- Descrição detalhada dos pods
+- Eventos do namespace
+- Logs dos pods
+- Status do deployment
+- Secrets e ConfigMaps disponíveis
+- Serviços e Ingress
+- Utilização de recursos do cluster
+
+Estas informações são exibidas nos logs do workflow e podem ajudar a identificar a causa do problema.
+
+### Verificação Manual
+
+Para verificar manualmente o status do deployment após a execução do workflow, você pode executar os seguintes comandos:
 
 ```bash
-# Verificar logs dos pods
-kubectl logs -l app=api-gateway -n whatsapp-chatbot
+# Verificar status dos pods
+kubectl get pods -l app=api-gateway -n whatsapp-chatbot
 
-# Verificar eventos do Kubernetes
-kubectl get events -n whatsapp-chatbot
-``` 
+# Verificar detalhes de um pod específico
+kubectl describe pod [NOME_DO_POD] -n whatsapp-chatbot
+
+# Verificar logs de um pod
+kubectl logs [NOME_DO_POD] -n whatsapp-chatbot
+
+# Verificar eventos do namespace
+kubectl get events -n whatsapp-chatbot --sort-by='.lastTimestamp'
+
+# Verificar status do deployment
+kubectl describe deployment api-gateway -n whatsapp-chatbot
+
+# Verificar se os secrets existem
+kubectl get secrets -n whatsapp-chatbot
+```
+
+### Ajustes nos Health Checks
+
+Se os pods estiverem falhando devido a problemas com os health checks, você pode ajustar os parâmetros no arquivo `k8s/api-gateway-deployment.yaml`:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 120  # Aumentar se a aplicação demorar para inicializar
+  periodSeconds: 20
+  timeoutSeconds: 10
+  failureThreshold: 5
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 15
+  timeoutSeconds: 10
+  failureThreshold: 5
+```
+
+### Verificação de Recursos
+
+Para verificar se o cluster tem recursos suficientes:
+
+```bash
+# Verificar utilização de recursos dos nós
+kubectl top nodes
+
+# Verificar utilização de recursos dos pods
+kubectl top pods -n whatsapp-chatbot
+```
+
+### Comportamento em Ambientes de Produção vs. Não-Produção
+
+O workflow está configurado para tratar falhas de deployment de forma diferente dependendo do ambiente:
+
+- Em ambientes de **produção**, o workflow falhará se o deployment não for concluído com sucesso
+- Em ambientes de **não-produção** (dev, staging), o workflow continuará mesmo se houver problemas no deployment
+
+Isso permite que você veja os resultados do diagnóstico em ambientes de desenvolvimento sem interromper o workflow. 

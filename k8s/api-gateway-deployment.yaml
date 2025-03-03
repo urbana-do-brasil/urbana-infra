@@ -46,34 +46,36 @@ spec:
             secretKeyRef:
               name: gemini-secret
               key: api_key
+              optional: true
         - name: WHATSAPP_VERIFICATION_TOKEN
           valueFrom:
             secretKeyRef:
               name: whatsapp-secret
               key: token
+              optional: true
         livenessProbe:
           httpGet:
-            path: /actuator/health/liveness
+            path: /actuator/health
             port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+          initialDelaySeconds: 120
+          periodSeconds: 20
+          timeoutSeconds: 10
+          failureThreshold: 5
         readinessProbe:
           httpGet:
-            path: /actuator/health/readiness
+            path: /actuator/health
             port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 5
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          failureThreshold: 12
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          failureThreshold: 20
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

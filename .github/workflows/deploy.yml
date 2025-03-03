@@ -115,14 +115,68 @@ jobs:
           kubectl apply -f k8s/network-policy.yaml -n ${{ env.NAMESPACE }}
           
       - name: Verificar status do rollout
+        id: rollout
+        continue-on-error: true
         run: |
           echo "Verificando status do rollout..."
           kubectl rollout status deployment/api-gateway -n ${{ env.NAMESPACE }} --timeout=180s
           
-      - name: Exibir informações do deployment
-        if: success()
+      - name: Diagnosticar problemas do deployment
+        if: steps.rollout.outcome == 'failure'
         run: |
-          echo "Deployment concluído com sucesso!"
+          echo "O rollout não foi concluído dentro do tempo limite. Verificando problemas..."
+          
+          echo "=== Pods do Deployment ==="
+          kubectl get pods -l app=api-gateway -n ${{ env.NAMESPACE }} -o wide
+          
+          echo "=== Descrição dos Pods ==="
+          POD_NAME=$(kubectl get pods -l app=api-gateway -n ${{ env.NAMESPACE }} -o jsonpath='{.items[0].metadata.name}')
+          if [ -n "$POD_NAME" ]; then
+            kubectl describe pod $POD_NAME -n ${{ env.NAMESPACE }}
+          else
+            echo "Nenhum pod encontrado para o deployment."
+          fi
+          
+          echo "=== Eventos do Namespace ==="
+          kubectl get events -n ${{ env.NAMESPACE }} --sort-by='.lastTimestamp'
+          
+          echo "=== Logs dos Pods (se disponíveis) ==="
+          if [ -n "$POD_NAME" ]; then
+            kubectl logs $POD_NAME -n ${{ env.NAMESPACE }} --all-containers=true || echo "Não foi possível obter logs"
+          fi
+          
+          echo "=== Status do Deployment ==="
+          kubectl get deployment api-gateway -n ${{ env.NAMESPACE }} -o yaml
+          
+          echo "=== Verificando Secrets ==="
+          kubectl get secrets -n ${{ env.NAMESPACE }}
+          
+          echo "=== Verificando ConfigMaps ==="
+          kubectl get configmaps -n ${{ env.NAMESPACE }}
+          
+          echo "=== Verificando Serviços ==="
+          kubectl get services -n ${{ env.NAMESPACE }}
+          
+          echo "=== Verificando Ingress ==="
+          kubectl get ingress -n ${{ env.NAMESPACE }}
+          
+          echo "=== Verificando Recursos do Cluster ==="
+          kubectl top nodes || echo "Comando 'kubectl top nodes' não disponível"
+          
+          echo "=== Verificando Recursos dos Pods ==="
+          kubectl top pods -n ${{ env.NAMESPACE }} || echo "Comando 'kubectl top pods' não disponível"
+          
+          # Determinar se devemos continuar ou falhar
+          if [ "${{ github.event.inputs.environment }}" == "prod" ]; then
+            echo "Ambiente de produção detectado. Falhando o workflow devido a problemas no deployment."
+            exit 1
+          else
+            echo "Ambiente não-produção. Continuando o workflow apesar dos problemas no deployment."
+          fi
+          
+      - name: Exibir informações do deployment
+        run: |
+          echo "Deployment concluído!"
           echo "Pods em execução:"
           kubectl get pods -l app=api-gateway -n ${{ env.NAMESPACE }}
           
@@ -130,4 +184,4 @@ jobs:
           kubectl get svc -l app=api-gateway -n ${{ env.NAMESPACE }}
           
           echo "Ingress:"
-          kubectl get ingress api-gateway-ingress -n ${{ env.NAMESPACE }} -o wide
+          kubectl get ingress api-gateway-ingress -n ${{ env.NAMESPACE }} -o wide || echo "Ingress não encontrado"
