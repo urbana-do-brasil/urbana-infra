@@ -137,6 +137,66 @@ Este workflow de deploy pode ser integrado com outros workflows, como:
 
 2. **Testes Automatizados**: Você pode adicionar testes automatizados antes do deploy para garantir a qualidade do código.
 
+## Configuração de Acesso ao Artifact Registry
+
+Para que o cluster GKE possa baixar imagens do Artifact Registry, é necessário configurar as permissões adequadas. O workflow inclui uma etapa para isso:
+
+```yaml
+- name: Configurar acesso do GKE ao Artifact Registry
+  run: |
+    # Criar um secret do tipo docker-registry para autenticação no Artifact Registry
+    kubectl create secret docker-registry gcr-json-key \
+      --namespace=${{ env.NAMESPACE }} \
+      --docker-server=${{ env.GCP_REGION }}-docker.pkg.dev \
+      --docker-username=_json_key \
+      --docker-password="$GOOGLE_CREDENTIALS" \
+      --docker-email=not-needed@example.com \
+      -o yaml --dry-run=client | kubectl apply -f -
+    
+    # Adicionar o secret à conta de serviço default
+    kubectl patch serviceaccount default \
+      -n ${{ env.NAMESPACE }} \
+      -p '{"imagePullSecrets": [{"name": "gcr-json-key"}]}' \
+      --type=merge
+```
+
+Além disso, o deployment deve ser configurado para usar este secret:
+
+```yaml
+spec:
+  imagePullSecrets:
+  - name: gcr-json-key
+  containers:
+  - name: api-gateway
+    # ...
+```
+
+### Configuração Manual
+
+Se você precisar configurar o acesso manualmente, siga estes passos:
+
+1. **Crie um secret com as credenciais do GCP**:
+   ```bash
+   kubectl create secret docker-registry gcr-json-key \
+     --namespace=whatsapp-chatbot \
+     --docker-server=us-central1-docker.pkg.dev \
+     --docker-username=_json_key \
+     --docker-password="$(cat /caminho/para/sua/chave.json)" \
+     --docker-email=not-needed@example.com
+   ```
+
+2. **Adicione o secret à conta de serviço**:
+   ```bash
+   kubectl patch serviceaccount default \
+     -n whatsapp-chatbot \
+     -p '{"imagePullSecrets": [{"name": "gcr-json-key"}]}'
+   ```
+
+3. **Verifique se o secret foi criado corretamente**:
+   ```bash
+   kubectl get secret gcr-json-key -n whatsapp-chatbot
+   ```
+
 ## Solução de Problemas
 
 ### Problemas Comuns de Deployment
@@ -151,7 +211,13 @@ Se o workflow falhar, verifique os seguintes problemas comuns:
 
 4. **Variáveis de ambiente vazias**: Certifique-se de que as variáveis `GCP_REGION` e `GKE_CLUSTER_NAME` estão definidas corretamente.
 
-5. **Timeout no rollout**: Se o deployment não completar dentro do tempo limite, pode haver problemas com:
+5. **Problemas de acesso ao Artifact Registry**: Se você encontrar erros como `ImagePullBackOff` ou `403 Forbidden` ao tentar baixar imagens, isso indica problemas de permissão:
+   - Verifique se a conta de serviço do GKE tem permissão para acessar o Artifact Registry
+   - Confirme se o secret `gcr-json-key` foi criado corretamente no namespace
+   - Verifique se o deployment está configurado para usar o secret através de `imagePullSecrets`
+   - Certifique-se de que o repositório no Artifact Registry não tem restrições de acesso que bloqueiam o cluster GKE
+
+6. **Timeout no rollout**: Se o deployment não completar dentro do tempo limite, pode haver problemas com:
    - **Health checks**: Os probes de liveness, readiness ou startup podem estar falhando
    - **Recursos insuficientes**: O cluster pode não ter CPU ou memória suficientes
    - **Secrets ausentes**: Verifique se os secrets necessários existem no namespace

@@ -46,6 +46,9 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ env.GCP_PROJECT_ID }}
+          token_format: 'access_token'
+          create_credentials_file: true
+          export_environment_variables: true
 
       - name: Configurar gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
@@ -82,6 +85,37 @@ jobs:
         run: |
           echo "Conectando ao cluster ${{ env.GKE_CLUSTER_NAME }} na região ${{ env.GCP_REGION }}..."
           gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} --region ${{ env.GCP_REGION }}
+          
+      - name: Configurar acesso do GKE ao Artifact Registry
+        run: |
+          echo "Configurando acesso do GKE ao Artifact Registry..."
+          
+          # Obter o nome da conta de serviço do GKE
+          GKE_SA=$(kubectl get serviceaccount default -n ${{ env.NAMESPACE }} -o jsonpath='{.metadata.name}' 2>/dev/null || echo "default")
+          echo "Conta de serviço do Kubernetes: $GKE_SA"
+          
+          # Verificar se o namespace existe, se não, criá-lo
+          if ! kubectl get namespace ${{ env.NAMESPACE }} &> /dev/null; then
+            echo "Criando namespace ${{ env.NAMESPACE }}..."
+            kubectl apply -f k8s/namespace.yaml
+          fi
+          
+          # Criar um secret do tipo docker-registry para autenticação no Artifact Registry
+          echo "Criando secret para autenticação no Artifact Registry..."
+          kubectl create secret docker-registry gcr-json-key \
+            --namespace=${{ env.NAMESPACE }} \
+            --docker-server=${{ env.GCP_REGION }}-docker.pkg.dev \
+            --docker-username=_json_key \
+            --docker-password="$GOOGLE_CREDENTIALS" \
+            --docker-email=not-needed@example.com \
+            -o yaml --dry-run=client | kubectl apply -f -
+          
+          # Adicionar o secret à conta de serviço default
+          echo "Adicionando secret à conta de serviço default..."
+          kubectl patch serviceaccount default \
+            -n ${{ env.NAMESPACE }} \
+            -p '{"imagePullSecrets": [{"name": "gcr-json-key"}]}' \
+            --type=merge
           
       - name: Verificar se a imagem existe no Artifact Registry
         id: check_image
