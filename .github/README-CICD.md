@@ -374,4 +374,39 @@ O workflow está configurado para tratar falhas de deployment de forma diferente
 - Em ambientes de **produção**, o workflow falhará se o deployment não for concluído com sucesso
 - Em ambientes de **não-produção** (dev, staging), o workflow continuará mesmo se houver problemas no deployment
 
-Isso permite que você veja os resultados do diagnóstico em ambientes de desenvolvimento sem interromper o workflow. 
+Isso permite que você veja os resultados do diagnóstico em ambientes de desenvolvimento sem interromper o workflow.
+
+## Estrutura dos Manifestos Kubernetes
+
+Os manifestos Kubernetes estão localizados no diretório `k8s/` e incluem:
+
+1. **namespace.yaml**: Define o namespace `whatsapp-chatbot`.
+
+2. **api-gateway-deployment.yaml**: Define o deployment da API Gateway, incluindo:
+   - Número de réplicas
+   - Imagem do container
+   - Recursos (CPU, memória)
+   - Health checks (liveness, readiness, startup probes)
+   - Variáveis de ambiente
+
+3. **api-gateway-service.yaml**: Define o serviço que expõe a API Gateway dentro do cluster.
+
+4. **api-gateway-ingress.yaml**: Define o Ingress que expõe a API Gateway externamente.
+   - Rota `/api` para o serviço api-gateway
+   - Configurações de SSL e reescrita de URL
+
+5. **network-policy.yaml**: Define as políticas de rede para o namespace.
+
+## Acesso à Aplicação
+
+Após o deployment, a aplicação estará disponível através do Ingress. A URL exata dependerá da configuração do seu cluster GKE e do domínio configurado.
+
+Para acessar a API Gateway:
+- Endpoint base: `https://[SEU-DOMÍNIO]/api`
+- Health check: `https://[SEU-DOMÍNIO]/api/actuator/health`
+
+Se você não configurou um domínio personalizado, o GKE fornecerá um endereço IP externo para o Ingress. Você pode verificar esse endereço com:
+
+```bash
+kubectl get ingress api-gateway-ingress -n whatsapp-chatbot
+``` 

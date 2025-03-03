@@ -138,13 +138,15 @@ jobs:
           echo "Manifesto atualizado com a imagem: $IMAGE_PATH"
           cat k8s/api-gateway-deployment.yaml | grep -A 3 "image:"
 
-      - name: Aplicar os manifestos do Kubernetes
+      - name: Aplicar manifestos Kubernetes
+        id: apply_manifests
         run: |
-          echo "Aplicando manifestos Kubernetes no namespace ${{ env.NAMESPACE }}..."
+          echo "Aplicando manifestos Kubernetes..."
           kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/api-gateway-deployment.yaml -n ${{ env.NAMESPACE }}
-          kubectl apply -f k8s/api-gateway-service.yaml -n ${{ env.NAMESPACE }}
-          kubectl apply -f k8s/network-policy.yaml -n ${{ env.NAMESPACE }}
+          kubectl apply -f k8s/api-gateway-deployment.yaml
+          kubectl apply -f k8s/api-gateway-service.yaml
+          kubectl apply -f k8s/api-gateway-ingress.yaml
+          kubectl apply -f k8s/network-policy.yaml
           
       - name: Verificar status do rollout
         id: rollout
