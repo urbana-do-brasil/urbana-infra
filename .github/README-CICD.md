@@ -23,6 +23,46 @@ Para que o pipeline funcione corretamente, você precisa configurar os seguintes
 - `GCP_REGION`: (Opcional) Região do Google Cloud onde estão o Artifact Registry e o cluster GKE
 - `GKE_CLUSTER_NAME`: (Opcional) Nome do cluster GKE
 
+### Permissões Necessárias para a Conta de Serviço
+
+A conta de serviço usada pelo GitHub Actions (referenciada em `GCP_SA_KEY`) deve ter as seguintes permissões:
+
+1. **Para acessar o GKE**:
+   - `container.clusters.get`
+   - `container.clusters.list`
+   - `container.deployments.get`
+   - `container.deployments.create`
+   - `container.deployments.update`
+   - `container.pods.get`
+   - `container.pods.list`
+   - `container.services.get`
+   - `container.services.list`
+   - `container.services.update`
+
+2. **Para acessar o Artifact Registry**:
+   - `artifactregistry.repositories.get`
+   - `artifactregistry.repositories.list`
+   - `artifactregistry.repositories.downloadArtifacts`
+
+Você pode conceder essas permissões atribuindo os seguintes papéis (roles) à conta de serviço:
+- `roles/container.developer`
+- `roles/artifactregistry.reader`
+
+Para conceder esses papéis, execute:
+
+```bash
+# Substitua [PROJECT_ID] pelo ID do seu projeto
+# Substitua [SERVICE_ACCOUNT_EMAIL] pelo email da sua conta de serviço
+
+gcloud projects add-iam-policy-binding [PROJECT_ID] \
+  --member="serviceAccount:[SERVICE_ACCOUNT_EMAIL]" \
+  --role="roles/container.developer"
+
+gcloud projects add-iam-policy-binding [PROJECT_ID] \
+  --member="serviceAccount:[SERVICE_ACCOUNT_EMAIL]" \
+  --role="roles/artifactregistry.reader"
+```
+
 ## Como Executar o Deploy
 
 1. Acesse a aba "Actions" no repositório GitHub
@@ -145,11 +185,12 @@ Para que o cluster GKE possa baixar imagens do Artifact Registry, é necessário
 - name: Configurar acesso do GKE ao Artifact Registry
   run: |
     # Criar um secret do tipo docker-registry para autenticação no Artifact Registry
+    ACCESS_TOKEN=$(gcloud auth print-access-token)
     kubectl create secret docker-registry gcr-json-key \
       --namespace=${{ env.NAMESPACE }} \
       --docker-server=${{ env.GCP_REGION }}-docker.pkg.dev \
-      --docker-username=_json_key \
-      --docker-password="$GOOGLE_CREDENTIALS" \
+      --docker-username=oauth2accesstoken \
+      --docker-password="$ACCESS_TOKEN" \
       --docker-email=not-needed@example.com \
       -o yaml --dry-run=client | kubectl apply -f -
     
@@ -175,27 +216,34 @@ spec:
 
 Se você precisar configurar o acesso manualmente, siga estes passos:
 
-1. **Crie um secret com as credenciais do GCP**:
+1. **Obtenha um token de acesso**:
+   ```bash
+   ACCESS_TOKEN=$(gcloud auth print-access-token)
+   ```
+
+2. **Crie um secret com o token de acesso**:
    ```bash
    kubectl create secret docker-registry gcr-json-key \
      --namespace=whatsapp-chatbot \
      --docker-server=us-central1-docker.pkg.dev \
-     --docker-username=_json_key \
-     --docker-password="$(cat /caminho/para/sua/chave.json)" \
+     --docker-username=oauth2accesstoken \
+     --docker-password="$ACCESS_TOKEN" \
      --docker-email=not-needed@example.com
    ```
 
-2. **Adicione o secret à conta de serviço**:
+3. **Adicione o secret à conta de serviço**:
    ```bash
    kubectl patch serviceaccount default \
      -n whatsapp-chatbot \
      -p '{"imagePullSecrets": [{"name": "gcr-json-key"}]}'
    ```
 
-3. **Verifique se o secret foi criado corretamente**:
+4. **Verifique se o secret foi criado corretamente**:
    ```bash
    kubectl get secret gcr-json-key -n whatsapp-chatbot
    ```
+
+> **Nota**: O token de acesso gerado por `gcloud auth print-access-token` tem validade limitada (geralmente 1 hora). Para ambientes de produção, considere implementar uma solução mais permanente, como o Workload Identity Federation.
 
 ## Solução de Problemas
 

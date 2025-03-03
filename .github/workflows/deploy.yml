@@ -46,9 +46,6 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ env.GCP_PROJECT_ID }}
-          token_format: 'access_token'
-          create_credentials_file: true
-          export_environment_variables: true
 
       - name: Configurar gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
@@ -102,11 +99,12 @@ jobs:
           
           # Criar um secret do tipo docker-registry para autenticação no Artifact Registry
           echo "Criando secret para autenticação no Artifact Registry..."
+          ACCESS_TOKEN=$(gcloud auth print-access-token)
           kubectl create secret docker-registry gcr-json-key \
             --namespace=${{ env.NAMESPACE }} \
             --docker-server=${{ env.GCP_REGION }}-docker.pkg.dev \
-            --docker-username=_json_key \
-            --docker-password="$GOOGLE_CREDENTIALS" \
+            --docker-username=oauth2accesstoken \
+            --docker-password="$ACCESS_TOKEN" \
             --docker-email=not-needed@example.com \
             -o yaml --dry-run=client | kubectl apply -f -
           
