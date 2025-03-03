@@ -11,4 +11,7 @@ spec:
     unhealthyThreshold: 2
     type: HTTP
     requestPath: /actuator/health
-    port: 8080 
+    port: 8080
+  timeoutSec: 60
+  connectionDraining:
+    drainingTimeoutSec: 60

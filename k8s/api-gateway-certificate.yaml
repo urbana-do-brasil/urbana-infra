@@ -1,0 +1,8 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: api-gateway-certificate
+  namespace: whatsapp-chatbot
+spec:
+  domains:
+  - api.urbanadobrasil.com  # Subdomínio para a API Gateway 

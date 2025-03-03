@@ -5,10 +5,26 @@ metadata:
   namespace: whatsapp-chatbot
   annotations:
     kubernetes.io/ingress.class: "gce"
-    kubernetes.io/ingress.allow-http: "true"
+    kubernetes.io/ingress.allow-http: "true"  # Permitir HTTP, mas redirecionar para HTTPS
     # Configurações de health check
     cloud.google.com/backend-config: '{"default": "api-gateway-backendconfig"}'
+    # Configuração do certificado gerenciado
+    networking.gke.io/managed-certificates: "api-gateway-certificate"
+    # Forçar redirecionamento para HTTPS
+    ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
+  rules:
+  - host: api.urbanadobrasil.com  # Subdomínio para a API Gateway
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 80
+  # Mantenha o defaultBackend para garantir que o tráfego para outros hosts também seja roteado
   defaultBackend:
     service:
       name: api-gateway
