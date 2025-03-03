@@ -72,12 +72,15 @@ spec:
           timeoutSeconds: 10
           failureThreshold: 5
         startupProbe:
+          failureThreshold: 30
           httpGet:
             path: /actuator/health
             port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 15
-          failureThreshold: 20
+            scheme: HTTP
+          initialDelaySeconds: 90
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 5
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

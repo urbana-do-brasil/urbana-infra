@@ -154,56 +154,69 @@ jobs:
           kubectl rollout status deployment/api-gateway -n ${{ env.NAMESPACE }} --timeout=180s
           
       - name: Diagnosticar problemas do deployment
-        if: steps.rollout.outcome == 'failure'
+        if: ${{ failure() && steps.apply_manifests.outcome == 'failure' }}
         run: |
           echo "O rollout não foi concluído dentro do tempo limite. Verificando problemas..."
           
+          # Verificar pods do deployment
           echo "=== Pods do Deployment ==="
-          kubectl get pods -l app=api-gateway -n ${{ env.NAMESPACE }} -o wide
+          kubectl get pods -l app=api-gateway -n ${{ env.NAMESPACE }}
           
+          # Descrever um dos pods para ver detalhes
           echo "=== Descrição dos Pods ==="
           POD_NAME=$(kubectl get pods -l app=api-gateway -n ${{ env.NAMESPACE }} -o jsonpath='{.items[0].metadata.name}')
-          if [ -n "$POD_NAME" ]; then
-            kubectl describe pod $POD_NAME -n ${{ env.NAMESPACE }}
-          else
-            echo "Nenhum pod encontrado para o deployment."
-          fi
+          kubectl describe pod $POD_NAME -n ${{ env.NAMESPACE }}
           
+          # Verificar eventos do namespace
           echo "=== Eventos do Namespace ==="
-          kubectl get events -n ${{ env.NAMESPACE }} --sort-by='.lastTimestamp'
+          kubectl get events -n ${{ env.NAMESPACE }} --sort-by='.lastTimestamp' | tail -30
           
+          # Verificar logs dos pods (se disponíveis)
           echo "=== Logs dos Pods (se disponíveis) ==="
-          if [ -n "$POD_NAME" ]; then
-            kubectl logs $POD_NAME -n ${{ env.NAMESPACE }} --all-containers=true || echo "Não foi possível obter logs"
+          RUNNING_POD=$(kubectl get pods -l app=api-gateway -n ${{ env.NAMESPACE }} -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' | awk '{print $1}')
+          if [ -n "$RUNNING_POD" ]; then
+            echo "Logs do pod $RUNNING_POD:"
+            kubectl logs $RUNNING_POD -n ${{ env.NAMESPACE }} --tail=50 || echo "Não foi possível obter logs"
+            
+            # Verificar status dos probes
+            echo "=== Status dos Probes ==="
+            kubectl get pod $RUNNING_POD -n ${{ env.NAMESPACE }} -o jsonpath='{.status.conditions}' | jq .
+          else
+            echo "Nenhum pod em execução encontrado"
           fi
           
+          # Verificar status do deployment
           echo "=== Status do Deployment ==="
           kubectl get deployment api-gateway -n ${{ env.NAMESPACE }} -o yaml
           
+          # Verificar secrets
           echo "=== Verificando Secrets ==="
           kubectl get secrets -n ${{ env.NAMESPACE }}
           
+          # Verificar configmaps
           echo "=== Verificando ConfigMaps ==="
           kubectl get configmaps -n ${{ env.NAMESPACE }}
           
+          # Verificar serviços
           echo "=== Verificando Serviços ==="
-          kubectl get services -n ${{ env.NAMESPACE }}
+          kubectl get svc -n ${{ env.NAMESPACE }}
           
+          # Verificar ingress
           echo "=== Verificando Ingress ==="
-          kubectl get ingress -n ${{ env.NAMESPACE }}
+          kubectl get ingress -n ${{ env.NAMESPACE }} || echo "Ingress não encontrado"
           
+          # Verificar recursos do cluster
           echo "=== Verificando Recursos do Cluster ==="
-          kubectl top nodes || echo "Comando 'kubectl top nodes' não disponível"
+          kubectl top nodes
           
+          # Verificar recursos dos pods
           echo "=== Verificando Recursos dos Pods ==="
           kubectl top pods -n ${{ env.NAMESPACE }} || echo "Comando 'kubectl top pods' não disponível"
           
-          # Determinar se devemos continuar ou falhar
-          if [ "${{ github.event.inputs.environment }}" == "prod" ]; then
-            echo "Ambiente de produção detectado. Falhando o workflow devido a problemas no deployment."
-            exit 1
-          else
+          # Continuar o workflow em ambientes não-produção
+          if [[ "${{ env.ENVIRONMENT }}" != "prod" ]]; then
             echo "Ambiente não-produção. Continuando o workflow apesar dos problemas no deployment."
+            exit 0
           fi
           
       - name: Exibir informações do deployment

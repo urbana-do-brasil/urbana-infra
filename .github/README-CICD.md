@@ -271,6 +271,27 @@ Se o workflow falhar, verifique os seguintes problemas comuns:
    - **Secrets ausentes**: Verifique se os secrets necessários existem no namespace
    - **Problemas na aplicação**: A aplicação pode estar falhando ao inicializar
 
+7. **Falhas no Startup Probe**: Se você vir erros como `Startup probe failed: context deadline exceeded`, isso indica que a aplicação está demorando mais do que o esperado para inicializar:
+   - Aumente o `initialDelaySeconds` para dar mais tempo antes de começar a verificar
+   - Aumente o `failureThreshold` para permitir mais tentativas antes de considerar o pod como falho
+   - Aumente o `periodSeconds` para verificar com menos frequência
+   - Aumente o `timeoutSeconds` para dar mais tempo para cada verificação responder
+
+   Exemplo de configuração mais tolerante para aplicações Spring Boot:
+   ```yaml
+   startupProbe:
+     failureThreshold: 30
+     httpGet:
+       path: /actuator/health
+       port: 8080
+     initialDelaySeconds: 90
+     periodSeconds: 20
+     successThreshold: 1
+     timeoutSeconds: 5
+   ```
+
+   Isso dá à aplicação aproximadamente 10 minutos (90s + 30 * 20s) para inicializar completamente.
+
 ### Diagnóstico Automático
 
 O workflow inclui uma etapa de diagnóstico automático que é executada quando o rollout falha. Esta etapa coleta informações detalhadas sobre o estado do deployment, incluindo:
